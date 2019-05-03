@@ -7,20 +7,51 @@ Plugin.create :block do
   @blocked_ids     = []
   @no_retweets_ids = []
   @muted_user_ids  = []
-  
-  command(:block,
-          name: 'ブロックする',
-          condition: Plugin::Command::CanReplyAll,
-          visible: true,
-          icon: nil,
-          role: :timeline) do |opt|
-    user = opt.messages.first.user
-    if ::Gtk::Dialog.confirm("@#{user[:idname]}をブロックしますよ、本当にいいんですか？")
-      if ::Gtk::Dialog.confirm("取り返しが付かないですがよろしいですね？")
-        (Service.primary.twitter/'blocks/create').json(:screen_name => user[:idname]).next do
-          @blocked_ids << user[:id]
+
+  if Environment::VERSION < [3, 6, 0, 0]
+    command(:block,
+            name: 'ブロックする',
+            condition: Plugin::Command::CanReplyAll,
+            visible: true,
+            icon: nil,
+            role: :timeline) do |opt|
+      user = opt.messages.first.user
+      if ::Gtk::Dialog.confirm("@#{user[:idname]}をブロックしますよ、本当にいいんですか？")
+        if ::Gtk::Dialog.confirm("取り返しが付かないですがよろしいですね？")
+          (Service.primary.twitter/'blocks/create').json(:screen_name => user[:idname]).next do
+            @blocked_ids << user[:id]
+          end
         end
       end
+    end
+  else
+    defspell(:block_user, :twitter, :twitter_user) do |twitter, user|
+      (Service.primary.twitter/'blocks/create').json(:screen_name => user[:idname]).next do
+        @blocked_ids << user[:id]
+      end
+    end
+
+    command(:block,
+            name: 'ブロックする',
+            condition: lambda { |opt|
+              world, = Plugin.filtering(:world_current, nil)
+              block_user?(world, opt.messages.first.user)
+            },
+            visible: true,
+            icon: nil,
+            role: :timeline) do |opt|
+      world, = Plugin.filtering(:world_current, nil)
+      next unless world
+      user = opt.messages.first.user
+      dialog('ブロックする') {
+        label '以下のユーザーをブロックしますよ、本当にいいんですか？'
+        link user
+
+        await_input
+        label '取り返しが付かないですがよろしいですね？'
+      }.next {
+        block_user(world, user)
+      }
     end
   end
 
