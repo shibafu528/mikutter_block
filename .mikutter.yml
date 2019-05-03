@@ -1,0 +1,14 @@
+---
+slug: :block
+depends:
+  mikutter: 3.6.0
+  plugin:
+  - command
+  - settings
+  - twitter
+version: '1.0'
+author:
+  - firstspring1845
+  - shibafu528
+name: 'block'
+description: ブロックコマンドを追加し、Twitter上のブロック・ミュート設定を取得してフィルタリングする設定を提供します。
